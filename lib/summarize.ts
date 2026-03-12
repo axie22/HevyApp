@@ -10,7 +10,8 @@ export function summarizeWorkouts(
   workouts: EnrichedWorkout[],
   acwr: AcwrResult[],
   plateaus: PlateauResult[],
-  balance: BalanceResult
+  balance: BalanceResult,
+  nutritionSummary?: string
 ): string {
   const now = new Date();
   const ninetyDaysAgo = new Date(now.getTime() - 90 * 86400000);
@@ -109,6 +110,12 @@ export function summarizeWorkouts(
   lines.push(
     `Current streak: ${streaks.current_streak} days | Longest streak: ${streaks.longest_streak} days | Avg gap between sessions: ${streaks.avg_gap_days} days`
   );
+
+  if (nutritionSummary) {
+    lines.push('');
+    lines.push(`=== NUTRITION (last 14 days) ===`);
+    lines.push(nutritionSummary);
+  }
 
   return lines.join('\n');
 }

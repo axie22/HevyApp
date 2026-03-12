@@ -15,6 +15,7 @@ interface Props {
   acwr: AcwrResult[];
   plateaus: PlateauResult[];
   balance: BalanceResult;
+  nutritionSummary?: string;
 }
 
 const STARTER_QUESTIONS = [
@@ -22,13 +23,16 @@ const STARTER_QUESTIONS = [
   'What should I focus on to break my biggest plateau?',
   'How is my push/pull balance looking?',
   'Plan me a deload week based on my recent training',
+  'Is my protein intake supporting my training volume?',
+  'How does my nutrition correlate with my session quality?',
 ];
 
 function buildSystemPrompt(
   summary: string,
   acwr: AcwrResult[],
   plateaus: PlateauResult[],
-  balance: BalanceResult
+  balance: BalanceResult,
+  nutritionSummary?: string
 ): string {
   const acwrWarnings = acwr
     .filter((a) => a.status === 'danger' || a.status === 'undertrained')
@@ -40,11 +44,16 @@ function buildSystemPrompt(
     .map((p) => `${p.exercise_title}:${p.risk.toUpperCase()}(${p.stall_weeks}wk stall)`)
     .join(', ') || 'none';
 
-  return `You are a knowledgeable strength and conditioning coach with access to the user's complete training history. Your role is to analyze their data and provide specific, actionable coaching advice.
+  const nutritionSection = nutritionSummary
+    ? `\n\nUSER NUTRITION DATA:\n${nutritionSummary}`
+    : '\n\nNUTRITION: No nutrition data logged yet.';
+
+  return `You are a knowledgeable strength and conditioning coach with access to the user's complete training history and nutrition log. Your role is to analyze their data and provide specific, actionable coaching advice.
 
 IMPORTANT RULES:
 - Always base your answers on the training data provided below
 - Be specific: reference actual exercises, dates, weights, and trends from the data
+- When nutrition data is available, incorporate it into recovery and performance advice
 - If a question cannot be answered from the data, say so clearly
 - Keep responses concise (under 300 words) unless a detailed plan is requested
 - Do not recommend injury-risking advice; suggest consulting a professional for pain/injury
@@ -58,10 +67,10 @@ COMPUTED METRICS:
 - ACWR flags: ${acwrWarnings}
 - Plateau flags: ${plateauWarnings}
 - Push/Pull ratio (30d): ${balance.push_pull_ratio.toFixed(2)}
-- Quad/Hip ratio (30d): ${balance.quad_hip_ratio.toFixed(2)}`;
+- Quad/Hip ratio (30d): ${balance.quad_hip_ratio.toFixed(2)}${nutritionSection}`;
 }
 
-export function ChatPanel({ summary, acwr, plateaus, balance }: Props) {
+export function ChatPanel({ summary, acwr, plateaus, balance, nutritionSummary }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -74,7 +83,7 @@ export function ChatPanel({ summary, acwr, plateaus, balance }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const systemPrompt = buildSystemPrompt(summary, acwr, plateaus, balance);
+  const systemPrompt = buildSystemPrompt(summary, acwr, plateaus, balance, nutritionSummary);
 
   async function sendMessage(content: string) {
     if (!content.trim() || isStreaming) return;
@@ -208,7 +217,7 @@ export function ChatPanel({ summary, acwr, plateaus, balance }: Props) {
           {messages.length === 0 && (
             <div className="space-y-4">
               <p className="text-sm text-zinc-400">
-                Ask me anything about your training data. I have full access to your workout history, ACWR status, plateau analysis, and more.
+                Ask me anything about your training. I have full access to your workout history, recovery status, plateau analysis, and nutrition log.
               </p>
               <div className="space-y-2">
                 <p className="text-xs text-zinc-500 font-medium uppercase tracking-wide">Suggested questions</p>
