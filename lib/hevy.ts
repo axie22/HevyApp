@@ -154,6 +154,51 @@ export interface PersonalRecord {
   is_recent: boolean;    // true if best_date is within last 30 days
 }
 
+export interface MuscleReadiness {
+  muscle_group: string;
+  fitness: number;       // CTL signal — cumulative adaptation
+  fatigue: number;       // ATL signal — acute fatigue
+  form: number;          // fitness - fatigue
+  readiness: number;     // 0–100 normalized score
+  status: 'fresh' | 'optimal' | 'fatigued' | 'overtrained';
+}
+
+export interface OverloadSuggestion {
+  exercise_template_id: string;
+  exercise_title: string;
+  suggestion: 'add_weight' | 'add_rep' | 'deload' | 'maintain';
+  rationale: string;
+  last_weight_kg: number;
+  suggested_weight_kg: number | null;
+  sessions_analyzed: number;
+}
+
+export interface OneRMPoint {
+  date: string;               // YYYY-MM-DD
+  estimated_1rm_kg: number;
+}
+
+export interface OneRMSeries {
+  exercise_template_id: string;
+  exercise_title: string;
+  points: OneRMPoint[];       // sorted by date ascending
+}
+
+export interface ConsistencyWeek {
+  week: string;               // YYYY-MM-DD Monday
+  score: number;              // 0–100
+  push_hit: boolean;
+  pull_hit: boolean;
+  quad_hit: boolean;
+  hip_hit: boolean;
+  workout_count: number;
+}
+
+export interface ConsistencyResult {
+  weeks: ConsistencyWeek[];
+  avg_score: number;
+}
+
 // ─── Muscle Group Normalization ──────────────────────────────────────────────
 
 const MUSCLE_ALIASES: Record<string, string> = {
