@@ -5,6 +5,8 @@ import {
   BalanceResult,
   SessionQualityResult,
   HeatmapDay,
+  WeeklyVolumePoint,
+  PersonalRecord,
 } from './hevy';
 
 // ─── ACWR Calculation ─────────────────────────────────────────────────────────
@@ -18,23 +20,31 @@ export function calculateAcwr(
   workouts: EnrichedWorkout[],
   referenceDate: Date = new Date()
 ): AcwrResult[] {
-  const ref = referenceDate.getTime();
-  const day7  = ref - 7  * 86400000;
-  const day28 = ref - 28 * 86400000;
+  // Normalize to UTC date string — consistent with w.date (also UTC-sliced from start_time)
+  const refStr = referenceDate.toISOString().slice(0, 10);
+
+  // Returns the date string N calendar days before refStr (uses noon UTC to avoid DST edge cases)
+  function daysBefore(n: number): string {
+    const d = new Date(refStr + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() - n);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // 7-day acute window: [day7Str, refStr], 28-day chronic window: [day28Str, refStr] (inclusive)
+  const day7Str  = daysBefore(6);  // 7 days inclusive (today + 6 prior days)
+  const day28Str = daysBefore(27); // 28 days inclusive
 
   // Build per-muscle-group daily volume records
   const muscleVolume: Map<string, Map<string, number>> = new Map();
 
   for (const w of workouts) {
-    const wDate = new Date(w.start_time).getTime();
-    if (wDate > ref || wDate < day28) continue;
+    if (w.date > refStr || w.date < day28Str) continue;
 
-    const dateKey = w.date;
     for (const ex of w.exercises) {
       for (const muscle of ex.muscle_groups) {
         if (!muscleVolume.has(muscle)) muscleVolume.set(muscle, new Map());
         const dayMap = muscleVolume.get(muscle)!;
-        dayMap.set(dateKey, (dayMap.get(dateKey) ?? 0) + ex.total_volume_kg);
+        dayMap.set(w.date, (dayMap.get(w.date) ?? 0) + ex.total_volume_kg);
       }
     }
   }
@@ -47,11 +57,10 @@ export function calculateAcwr(
     let chronic_days_count = 0;
 
     for (const [dateStr, vol] of dayMap) {
-      const t = new Date(dateStr).getTime();
-      if (t >= day7 && t <= ref) {
+      if (dateStr >= day7Str && dateStr <= refStr) {
         acute_load += vol;
       }
-      if (t >= day28 && t <= ref) {
+      if (dateStr >= day28Str && dateStr <= refStr) {
         chronic_total += vol;
         chronic_days_count++;
       }
@@ -464,4 +473,98 @@ function yesterday(): string {
   const d = new Date();
   d.setDate(d.getDate() - 1);
   return d.toISOString().slice(0, 10);
+}
+
+// ─── Weekly Volume ─────────────────────────────────────────────────────────────
+
+export function computeWeeklyVolume(
+  workouts: EnrichedWorkout[],
+  weeks = 16
+): WeeklyVolumePoint[] {
+  // Returns the UTC Monday date string for any given YYYY-MM-DD date string
+  function getMondayStr(dateStr: string): string {
+    const d = new Date(dateStr + 'T12:00:00Z');
+    const dow = d.getUTCDay(); // 0=Sun
+    const offset = dow === 0 ? -6 : 1 - dow;
+    d.setUTCDate(d.getUTCDate() + offset);
+    return d.toISOString().slice(0, 10);
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const currentWeekMonday = getMondayStr(todayStr);
+
+  // Start of the window: N-1 weeks before current Monday
+  const cutoff = new Date(currentWeekMonday + 'T12:00:00Z');
+  cutoff.setUTCDate(cutoff.getUTCDate() - (weeks - 1) * 7);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  // Aggregate workouts into their week buckets
+  const weekMap = new Map<string, { volume_kg: number; workout_count: number }>();
+  for (const w of workouts) {
+    if (w.date < cutoffStr) continue;
+    const monday = getMondayStr(w.date);
+    const existing = weekMap.get(monday);
+    if (existing) {
+      existing.volume_kg += w.total_volume_kg;
+      existing.workout_count++;
+    } else {
+      weekMap.set(monday, { volume_kg: w.total_volume_kg, workout_count: 1 });
+    }
+  }
+
+  // Build result including zero-volume weeks
+  const result: WeeklyVolumePoint[] = [];
+  const cursor = new Date(cutoffStr + 'T12:00:00Z');
+  for (let i = 0; i < weeks; i++) {
+    const weekStr = cursor.toISOString().slice(0, 10);
+    const data = weekMap.get(weekStr);
+    result.push({
+      week: weekStr,
+      volume_kg: data?.volume_kg ?? 0,
+      workout_count: data?.workout_count ?? 0,
+      is_current: weekStr === currentWeekMonday,
+    });
+    cursor.setUTCDate(cursor.getUTCDate() + 7);
+  }
+
+  return result;
+}
+
+// ─── Personal Records ──────────────────────────────────────────────────────────
+
+export function findPersonalRecords(
+  workouts: EnrichedWorkout[]
+): PersonalRecord[] {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const cutoff = new Date(todayStr + 'T12:00:00Z');
+  cutoff.setUTCDate(cutoff.getUTCDate() - 30);
+  const recentCutoff = cutoff.toISOString().slice(0, 10);
+
+  // Track best weight per exercise (workouts are sorted chronologically, so later ones naturally win ties)
+  const prMap = new Map<string, { title: string; best_weight_kg: number; best_date: string }>();
+
+  for (const w of workouts) {
+    for (const ex of w.exercises) {
+      if (ex.top_set_weight_kg <= 0) continue;
+      const existing = prMap.get(ex.exercise_template_id);
+      if (!existing || ex.top_set_weight_kg > existing.best_weight_kg) {
+        prMap.set(ex.exercise_template_id, {
+          title: ex.title,
+          best_weight_kg: ex.top_set_weight_kg,
+          best_date: w.date,
+        });
+      }
+    }
+  }
+
+  return Array.from(prMap.entries())
+    .map(([id, rec]) => ({
+      exercise_template_id: id,
+      exercise_title: rec.title,
+      best_weight_kg: rec.best_weight_kg,
+      best_date: rec.best_date,
+      is_recent: rec.best_date >= recentCutoff,
+    }))
+    .sort((a, b) => b.best_weight_kg - a.best_weight_kg)
+    .slice(0, 20);
 }
