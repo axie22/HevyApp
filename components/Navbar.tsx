@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useUnits } from '@/lib/units';
 
 const LINKS = [
   { href: '/', label: 'Dashboard' },
@@ -10,6 +11,7 @@ const LINKS = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const { unit, toggle } = useUnits();
 
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/90 backdrop-blur-md">
@@ -32,25 +34,34 @@ export function Navbar() {
           </span>
         </div>
 
-        {/* Nav links */}
-        <nav className="flex items-center gap-1">
-          {LINKS.map(({ href, label }) => {
-            const active = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  active
-                    ? 'bg-zinc-800 text-zinc-100'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'
-                }`}
-              >
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* Nav links + unit toggle */}
+        <div className="flex items-center gap-2">
+          <nav className="flex items-center gap-1">
+            {LINKS.map(({ href, label }) => {
+              const active = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    active
+                      ? 'bg-zinc-800 text-zinc-100'
+                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+          <button
+            onClick={toggle}
+            className="ml-1 px-2.5 py-1 rounded-lg border border-zinc-700 text-xs font-semibold text-zinc-400 hover:text-zinc-100 hover:border-zinc-500 transition-colors tabular-nums"
+            title="Toggle weight unit"
+          >
+            {unit.toUpperCase()}
+          </button>
+        </div>
       </div>
     </header>
   );

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { HeatmapDay } from '@/lib/hevy';
+import { useUnits } from '@/lib/units';
 
 interface Props {
   days: HeatmapDay[];
@@ -31,6 +32,7 @@ const levelColors: Record<number, string> = {
 
 export function ConsistencyHeatmap({ days, currentStreak, longestStreak, avgGapDays }: Props) {
   const [tooltip, setTooltip] = useState<{ date: string; volume: number; x: number; y: number } | null>(null);
+  const { fmtVolume } = useUnits();
 
   const { grid, maxVolume } = useMemo(() => {
     const today = new Date();
@@ -188,7 +190,7 @@ export function ConsistencyHeatmap({ days, currentStreak, longestStreak, avgGapD
         >
           <div className="font-medium text-zinc-200">{tooltip.date}</div>
           {tooltip.volume > 0 ? (
-            <div className="text-zinc-400">{Math.round(tooltip.volume).toLocaleString()} kg volume</div>
+            <div className="text-zinc-400">{fmtVolume(tooltip.volume)} volume</div>
           ) : (
             <div className="text-zinc-500">Rest day</div>
           )}

@@ -2,12 +2,14 @@
 
 import { PlateauResult } from '@/lib/hevy';
 import { DangerBadge } from './DangerBadge';
+import { useUnits } from '@/lib/units';
 
 interface Props {
   plateaus: PlateauResult[];
 }
 
 export function PlateauCards({ plateaus }: Props) {
+  const { fmtWeight } = useUnits();
   if (plateaus.length === 0) {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
@@ -37,7 +39,7 @@ export function PlateauCards({ plateaus }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-zinc-200 truncate">{p.exercise_title}</div>
                 <div className="mt-1 text-xs text-zinc-500">
-                  Best weight: <span className="text-zinc-300">{p.last_best > 0 ? `${p.last_best} kg` : 'bodyweight'}</span>
+                  Best weight: <span className="text-zinc-300">{p.last_best > 0 ? fmtWeight(p.last_best, 1) : 'bodyweight'}</span>
                   {' · '}
                   Stalled <span className="text-zinc-300">{p.stall_weeks} week{p.stall_weeks !== 1 ? 's' : ''}</span>
                 </div>
