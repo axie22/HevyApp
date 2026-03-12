@@ -6,7 +6,7 @@ A workout analytics dashboard that surfaces deeper training patterns from your [
 
 ## Walkthrough Video
 
-<video src="assets/walkthrough.mp4" controls width="100%"></video>
+https://github.com/user-attachments/assets/fca23a13-daee-428a-9eab-3bc30f4aec90
 
 A full UI walkthrough covering every feature: stats overview, consistency heatmap, fatigue and recovery, weekly volume, session quality, nutrition, and the AI coach.
 
