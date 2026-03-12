@@ -102,56 +102,80 @@ export function ConsistencyHeatmap({ days, currentStreak, longestStreak, avgGapD
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="relative" style={{ minWidth: totalCols * (CELL + GAP) }}>
-          {/* Month labels */}
-          <div className="relative h-5 mb-1">
-            {monthLabels.map(({ col, label }) => (
-              <span
-                key={`${col}-${label}`}
-                className="absolute text-xs text-zinc-500"
-                style={{ left: col * (CELL + GAP) }}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
+      <div className="flex gap-1">
+        {/* Day-of-week labels — fixed, does not scroll with the grid */}
+        <div
+          className="flex-shrink-0 flex flex-col"
+          style={{
+            paddingTop: 24, // matches month-label area: h-5 (20px) + mb-1 (4px)
+            gap: GAP,
+            width: 28,
+          }}
+        >
+          {/* row 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat */}
+          {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((label, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-end text-[10px] text-zinc-600 pr-1.5"
+              style={{ height: CELL }}
+            >
+              {label}
+            </div>
+          ))}
+        </div>
 
-          {/* Grid */}
-          <div
-            className="grid"
-            style={{
-              gridTemplateColumns: `repeat(${totalCols}, ${CELL}px)`,
-              gridTemplateRows: `repeat(7, ${CELL}px)`,
-              gap: GAP,
-            }}
-          >
-            {grid.map((cell) => (
-              <div
-                key={cell.date}
-                className={`rounded-sm cursor-pointer transition-opacity hover:opacity-80 ${levelColors[cell.level]}`}
-                style={{
-                  gridColumn: cell.col + 1,
-                  gridRow: cell.row + 1,
-                  width: CELL,
-                  height: CELL,
-                }}
-                onMouseEnter={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setTooltip({ date: cell.date, volume: cell.volume, x: rect.left, y: rect.top });
-                }}
-                onMouseLeave={() => setTooltip(null)}
-              />
-            ))}
-          </div>
+        {/* Scrollable heatmap grid */}
+        <div className="overflow-x-auto flex-1">
+          <div className="relative" style={{ minWidth: totalCols * (CELL + GAP) }}>
+            {/* Month labels */}
+            <div className="relative h-5 mb-1">
+              {monthLabels.map(({ col, label }) => (
+                <span
+                  key={`${col}-${label}`}
+                  className="absolute text-xs text-zinc-500"
+                  style={{ left: col * (CELL + GAP) }}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
 
-          {/* Legend */}
-          <div className="flex items-center gap-1 mt-3 justify-end">
-            <span className="text-xs text-zinc-500 mr-1">Less</span>
-            {[0, 1, 2, 3, 4, 5].map((l) => (
-              <div key={l} className={`w-3 h-3 rounded-sm ${levelColors[l]}`} />
-            ))}
-            <span className="text-xs text-zinc-500 ml-1">More</span>
+            {/* Grid */}
+            <div
+              className="grid"
+              style={{
+                gridTemplateColumns: `repeat(${totalCols}, ${CELL}px)`,
+                gridTemplateRows: `repeat(7, ${CELL}px)`,
+                gap: GAP,
+              }}
+            >
+              {grid.map((cell) => (
+                <div
+                  key={cell.date}
+                  className={`rounded-sm cursor-pointer transition-opacity hover:opacity-80 ${levelColors[cell.level]}`}
+                  style={{
+                    gridColumn: cell.col + 1,
+                    gridRow: cell.row + 1,
+                    width: CELL,
+                    height: CELL,
+                  }}
+                  onMouseEnter={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setTooltip({ date: cell.date, volume: cell.volume, x: rect.left, y: rect.top });
+                  }}
+                  onMouseLeave={() => setTooltip(null)}
+                />
+              ))}
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center gap-1 mt-3 justify-end">
+              <span className="text-xs text-zinc-500 mr-1">Less</span>
+              {[0, 1, 2, 3, 4, 5].map((l) => (
+                <div key={l} className={`w-3 h-3 rounded-sm ${levelColors[l]}`} />
+              ))}
+              <span className="text-xs text-zinc-500 ml-1">More</span>
+            </div>
           </div>
         </div>
       </div>
