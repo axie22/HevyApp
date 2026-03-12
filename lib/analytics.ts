@@ -7,6 +7,11 @@ import {
   HeatmapDay,
   WeeklyVolumePoint,
   PersonalRecord,
+  MuscleReadiness,
+  OverloadSuggestion,
+  OneRMSeries,
+  ConsistencyResult,
+  ConsistencyWeek,
 } from './hevy';
 
 // ─── ACWR Calculation ─────────────────────────────────────────────────────────
@@ -567,4 +572,305 @@ export function findPersonalRecords(
     }))
     .sort((a, b) => b.best_weight_kg - a.best_weight_kg)
     .slice(0, 20);
+}
+
+// ─── SRA Muscle Readiness ──────────────────────────────────────────────────────
+
+// Muscles worth surfacing in the UI
+const DISPLAY_MUSCLES = new Set([
+  'chest', 'back', 'shoulders', 'biceps', 'triceps',
+  'quads', 'hamstrings', 'glutes', 'lower_back', 'rear_delts',
+  'abs', 'calves', 'traps',
+]);
+
+export function computeMuscleReadiness(
+  workouts: EnrichedWorkout[]
+): MuscleReadiness[] {
+  const TAU_FITNESS = 42; // days — chronic training load
+  const TAU_FATIGUE = 7;  // days — acute fatigue
+  const K_FATIGUE   = 2.0;
+
+  // Build date → muscle → weighted load
+  // muscle_groups[0] = primary (1.0x), rest = secondary (0.35x)
+  const dayMap = new Map<string, Map<string, number>>();
+
+  for (const w of workouts) {
+    let dm = dayMap.get(w.date);
+    if (!dm) { dm = new Map(); dayMap.set(w.date, dm); }
+    for (const ex of w.exercises) {
+      const vol = ex.total_volume_kg;
+      if (vol <= 0) continue;
+      ex.muscle_groups.forEach((m, i) => {
+        const load = vol * (i === 0 ? 1.0 : 0.35);
+        dm!.set(m, (dm!.get(m) ?? 0) + load);
+      });
+    }
+  }
+
+  const allMuscles = new Set<string>();
+  for (const dm of dayMap.values()) for (const m of dm.keys()) allMuscles.add(m);
+
+  const sortedDates = Array.from(dayMap.keys()).sort();
+  if (sortedDates.length === 0) return [];
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const results: MuscleReadiness[] = [];
+
+  for (const muscle of allMuscles) {
+    if (!DISPLAY_MUSCLES.has(muscle)) continue;
+
+    let fitness = 0;
+    let fatigue = 0;
+    let peakFitness = 0;
+    let prevStr = sortedDates[0];
+
+    for (const dateStr of sortedDates) {
+      const days = Math.round(
+        (new Date(dateStr + 'T12:00:00Z').getTime() -
+         new Date(prevStr + 'T12:00:00Z').getTime()) / 86400000
+      );
+      fitness *= Math.exp(-days / TAU_FITNESS);
+      fatigue *= Math.exp(-days / TAU_FATIGUE);
+
+      const load = dayMap.get(dateStr)?.get(muscle) ?? 0;
+      fitness += load;
+      fatigue += K_FATIGUE * load;
+      peakFitness = Math.max(peakFitness, fitness);
+      prevStr = dateStr;
+    }
+
+    // Decay to today
+    const daysToToday = Math.round(
+      (new Date(todayStr + 'T12:00:00Z').getTime() -
+       new Date(prevStr + 'T12:00:00Z').getTime()) / 86400000
+    );
+    fitness *= Math.exp(-daysToToday / TAU_FITNESS);
+    fatigue *= Math.exp(-daysToToday / TAU_FATIGUE);
+
+    const form = fitness - fatigue;
+    const normalizer = peakFitness > 0 ? peakFitness : 1;
+    const readiness = Math.max(0, Math.min(100, Math.round(50 + (form / normalizer) * 50)));
+
+    let status: MuscleReadiness['status'];
+    if (readiness >= 70) status = 'fresh';
+    else if (readiness >= 40) status = 'optimal';
+    else if (readiness >= 15) status = 'fatigued';
+    else status = 'overtrained';
+
+    results.push({
+      muscle_group: muscle,
+      fitness: Math.round(fitness),
+      fatigue: Math.round(fatigue),
+      form: Math.round(form),
+      readiness,
+      status,
+    });
+  }
+
+  return results.sort((a, b) => a.readiness - b.readiness);
+}
+
+// ─── Progressive Overload Suggestions ─────────────────────────────────────────
+
+export function computeOverloadSuggestions(
+  workouts: EnrichedWorkout[]
+): OverloadSuggestion[] {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const d = new Date(todayStr + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 42);
+  const cutoffStr = d.toISOString().slice(0, 10);
+
+  type Session = { date: string; weight: number; avgReps: number; volume: number };
+  const history = new Map<string, { title: string; sessions: Session[] }>();
+
+  for (const w of workouts) {
+    if (w.date < cutoffStr) continue;
+    for (const ex of w.exercises) {
+      const working = ex.sets.filter((s) => s.is_working_set);
+      if (working.length === 0) continue;
+      const maxWeight = Math.max(0, ...working.map((s) => s.weight_kg ?? 0));
+      if (maxWeight <= 0) continue;
+      const avgReps = working.reduce((sum, s) => sum + (s.reps ?? 0), 0) / working.length;
+      if (!history.has(ex.exercise_template_id)) {
+        history.set(ex.exercise_template_id, { title: ex.title, sessions: [] });
+      }
+      history.get(ex.exercise_template_id)!.sessions.push({
+        date: w.date,
+        weight: maxWeight,
+        avgReps: Math.round(avgReps * 10) / 10,
+        volume: ex.total_volume_kg,
+      });
+    }
+  }
+
+  const URGENCY: Record<OverloadSuggestion['suggestion'], number> = {
+    add_weight: 3,
+    add_rep:    2,
+    deload:     1,
+    maintain:   0,
+  };
+
+  const results: OverloadSuggestion[] = [];
+
+  for (const [id, { title, sessions }] of history) {
+    if (sessions.length < 3) continue;
+    sessions.sort((a, b) => a.date.localeCompare(b.date));
+
+    const last = sessions.slice(-5);
+    const latest = last[last.length - 1];
+    const prior = last.slice(0, -1);
+
+    const avgWeight = prior.reduce((s, e) => s + e.weight, 0) / prior.length;
+    const avgReps   = prior.reduce((s, e) => s + e.avgReps, 0) / prior.length;
+    const avgVolume = prior.reduce((s, e) => s + e.volume, 0) / prior.length;
+
+    const weightUp      = latest.weight > avgWeight * 1.02;
+    const weightFlat    = Math.abs(latest.weight - avgWeight) / avgWeight <= 0.02;
+    const weightDropped = latest.weight < avgWeight * 0.88;
+    const volumeDropped = latest.volume < avgVolume * 0.82;
+    const repsHigh      = latest.avgReps >= 10 && avgReps >= 9;
+
+    let suggestion: OverloadSuggestion['suggestion'];
+    let rationale: string;
+    let suggested_weight_kg: number | null = null;
+
+    if (weightDropped && volumeDropped) {
+      suggestion = 'deload';
+      rationale  = `Volume dropped ${Math.round((1 - latest.volume / avgVolume) * 100)}% below recent avg. Schedule a deload before resetting.`;
+    } else if (weightUp) {
+      suggestion = 'maintain';
+      rationale  = `Weight trending up +${((latest.weight - avgWeight) / avgWeight * 100).toFixed(1)}% vs recent avg. Keep the momentum.`;
+    } else if (repsHigh && weightFlat) {
+      suggestion        = 'add_weight';
+      rationale         = `Averaging ${latest.avgReps} reps — rep range maxed. Ready to increase load.`;
+      suggested_weight_kg = latest.weight + 2.5;
+    } else if (weightFlat) {
+      suggestion = 'add_rep';
+      rationale  = `Weight stable for ${prior.length + 1} sessions. Aim for one extra rep per set before adding load.`;
+    } else {
+      suggestion = 'maintain';
+      rationale  = `Consistent effort. Monitor next session for a clear progression signal.`;
+    }
+
+    results.push({
+      exercise_template_id: id,
+      exercise_title:       title,
+      suggestion,
+      rationale,
+      last_weight_kg:       latest.weight,
+      suggested_weight_kg,
+      sessions_analyzed:    last.length,
+    });
+  }
+
+  return results
+    .sort((a, b) => URGENCY[b.suggestion] - URGENCY[a.suggestion])
+    .slice(0, 15);
+}
+
+// ─── Estimated 1RM History (Epley) ────────────────────────────────────────────
+
+const COMPOUND_KEYWORDS = ['squat', 'deadlift', 'bench', 'press', 'row'];
+
+export function computeOneRMSeries(workouts: EnrichedWorkout[]): OneRMSeries[] {
+  const history = new Map<string, { title: string; points: { date: string; estimated_1rm_kg: number }[] }>();
+
+  for (const w of workouts) {
+    for (const ex of w.exercises) {
+      const isCompound = COMPOUND_KEYWORDS.some((kw) =>
+        ex.title.toLowerCase().includes(kw)
+      );
+      if (!isCompound) continue;
+
+      let best1RM = 0;
+      for (const s of ex.sets) {
+        if (!s.is_working_set || !s.weight_kg || !s.reps || s.reps <= 0) continue;
+        const e1rm = s.weight_kg * (1 + s.reps / 30);
+        best1RM = Math.max(best1RM, e1rm);
+      }
+      if (best1RM <= 0) continue;
+
+      if (!history.has(ex.exercise_template_id)) {
+        history.set(ex.exercise_template_id, { title: ex.title, points: [] });
+      }
+      history.get(ex.exercise_template_id)!.points.push({
+        date: w.date,
+        estimated_1rm_kg: Math.round(best1RM * 10) / 10,
+      });
+    }
+  }
+
+  return Array.from(history.entries())
+    .filter(([, { points }]) => points.length >= 3)
+    .sort((a, b) => b[1].points.length - a[1].points.length)
+    .slice(0, 8)
+    .map(([id, { title, points }]) => ({
+      exercise_template_id: id,
+      exercise_title: title,
+      points: points.sort((a, b) => a.date.localeCompare(b.date)),
+    }));
+}
+
+// ─── Weekly Consistency Score ─────────────────────────────────────────────────
+
+function getMondayStr(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  const dow = d.getUTCDay();
+  const offset = dow === 0 ? -6 : 1 - dow;
+  d.setUTCDate(d.getUTCDate() + offset);
+  return d.toISOString().slice(0, 10);
+}
+
+export function computeConsistencyScore(
+  workouts: EnrichedWorkout[],
+  weeks = 12
+): ConsistencyResult {
+  const weekMap = new Map<string, { muscles: Set<string>; workouts: number }>();
+
+  for (const w of workouts) {
+    const monday = getMondayStr(w.date);
+    if (!weekMap.has(monday)) weekMap.set(monday, { muscles: new Set(), workouts: 0 });
+    const entry = weekMap.get(monday)!;
+    entry.workouts++;
+    for (const ex of w.exercises) {
+      for (const m of ex.muscle_groups) entry.muscles.add(m);
+    }
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const currentMonday = getMondayStr(todayStr);
+  const cursor = new Date(currentMonday + 'T12:00:00Z');
+  cursor.setUTCDate(cursor.getUTCDate() - (weeks - 1) * 7);
+
+  const weekResults: ConsistencyWeek[] = [];
+
+  for (let i = 0; i < weeks; i++) {
+    const weekStr = cursor.toISOString().slice(0, 10);
+    const entry   = weekMap.get(weekStr);
+    const muscles = entry?.muscles ?? new Set<string>();
+
+    const push_hit = [...muscles].some((m) => PUSH_MUSCLES.has(m));
+    const pull_hit = [...muscles].some((m) => PULL_MUSCLES.has(m));
+    const quad_hit = [...muscles].some((m) => QUAD_MUSCLES.has(m));
+    const hip_hit  = [...muscles].some((m) => HIP_MUSCLES.has(m));
+    const hit = [push_hit, pull_hit, quad_hit, hip_hit].filter(Boolean).length;
+
+    weekResults.push({
+      week: weekStr,
+      score: Math.round((hit / 4) * 100),
+      push_hit,
+      pull_hit,
+      quad_hit,
+      hip_hit,
+      workout_count: entry?.workouts ?? 0,
+    });
+    cursor.setUTCDate(cursor.getUTCDate() + 7);
+  }
+
+  const scores = weekResults.map((w) => w.score);
+  const avg_score = scores.length > 0
+    ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+    : 0;
+
+  return { weeks: weekResults, avg_score };
 }
