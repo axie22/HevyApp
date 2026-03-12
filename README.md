@@ -6,17 +6,9 @@ A workout analytics dashboard that surfaces deeper training patterns from your [
 
 ## Walkthrough Video
 
-A full UI walkthrough was produced using [Remotion](https://remotion.dev) and covers every feature in the dashboard. To run the studio or render the video yourself:
+<video src="assets/walkthrough.mp4" controls width="100%"></video>
 
-```bash
-# Open interactive preview in browser
-npm run remotion:studio
-
-# Render to MP4 (output saved to out/walkthrough.mp4)
-npm run remotion:render
-```
-
-The walkthrough is 1920x1080, 30fps, and covers all nine scenes: intro, stats overview, consistency heatmap, fatigue and recovery, weekly volume, session quality, nutrition, AI coach, and outro.
+A full UI walkthrough covering every feature: stats overview, consistency heatmap, fatigue and recovery, weekly volume, session quality, nutrition, and the AI coach.
 
 ---
 
