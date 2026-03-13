@@ -29,6 +29,15 @@ import { NutritionDashboardWidget } from '@/components/NutritionDashboardWidget'
 import { VolumeStatCard } from '@/components/VolumeStatCard';
 import { ChatPanel } from '@/components/ChatPanel';
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600 shrink-0">{children}</span>
+      <div className="flex-1 h-px bg-zinc-800" />
+    </div>
+  );
+}
+
 export default async function DashboardPage() {
   const [rawWorkouts, templates] = await Promise.all([
     getCachedWorkouts(),
@@ -104,32 +113,35 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Stats bar — 5 cards */}
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-4">
-                <div className="text-xs text-zinc-500 font-medium uppercase tracking-wide">This week</div>
-                <div className="mt-1 text-2xl font-bold text-zinc-100 tabular-nums">{thisWeekSessions}</div>
-                <div className="text-xs text-zinc-400 mt-0.5">{thisWeekSessions === 1 ? 'session' : 'sessions'}</div>
-              </div>
-              <VolumeStatCard volumeKg={thisMonthVolumeKg} />
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-4">
-                <div className="text-xs text-zinc-500 font-medium uppercase tracking-wide">Current streak</div>
-                <div className="mt-1 text-2xl font-bold text-zinc-100 tabular-nums">{streaks.current_streak}</div>
-                <div className="text-xs text-zinc-400 mt-0.5">{streaks.current_streak === 1 ? 'day' : 'days'}</div>
-              </div>
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-4">
-                <div className="text-xs text-zinc-500 font-medium uppercase tracking-wide">All-time</div>
-                <div className="mt-1 text-2xl font-bold text-zinc-100 tabular-nums">{workouts.length.toLocaleString()}</div>
-                <div className="text-xs text-zinc-400 mt-0.5">workouts</div>
-              </div>
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-4">
-                <div className="text-xs text-zinc-500 font-medium uppercase tracking-wide">12-week balance</div>
-                <div className="mt-1 text-2xl font-bold text-zinc-100 tabular-nums">{consistency.avg_score}%</div>
-                <div className="text-xs text-zinc-400 mt-0.5">muscle group coverage</div>
+            {/* Stats bar — unified panel */}
+            <div className="rounded-2xl border border-zinc-800 overflow-hidden">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-px bg-zinc-800">
+                <div className="bg-zinc-900 px-5 py-5">
+                  <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">This week</div>
+                  <div className="mt-2.5 text-3xl font-bold tabular-nums text-zinc-100 leading-none tracking-tight">{thisWeekSessions}</div>
+                  <div className="text-xs text-zinc-500 mt-1.5">{thisWeekSessions === 1 ? 'session' : 'sessions'}</div>
+                </div>
+                <VolumeStatCard volumeKg={thisMonthVolumeKg} />
+                <div className="bg-zinc-900 px-5 py-5">
+                  <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Streak</div>
+                  <div className="mt-2.5 text-3xl font-bold tabular-nums text-zinc-100 leading-none tracking-tight">{streaks.current_streak}</div>
+                  <div className="text-xs text-zinc-500 mt-1.5">{streaks.current_streak === 1 ? 'day' : 'days'}</div>
+                </div>
+                <div className="bg-zinc-900 px-5 py-5">
+                  <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">All-time</div>
+                  <div className="mt-2.5 text-3xl font-bold tabular-nums text-zinc-100 leading-none tracking-tight">{workouts.length.toLocaleString()}</div>
+                  <div className="text-xs text-zinc-500 mt-1.5">workouts</div>
+                </div>
+                <div className="bg-zinc-900 px-5 py-5">
+                  <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">12-wk balance</div>
+                  <div className="mt-2.5 text-3xl font-bold tabular-nums text-zinc-100 leading-none tracking-tight">{consistency.avg_score}%</div>
+                  <div className="text-xs text-zinc-500 mt-1.5">muscle coverage</div>
+                </div>
               </div>
             </div>
 
-            {/* Row 1: Consistency heatmap */}
+            {/* Consistency */}
+            <SectionLabel>Consistency</SectionLabel>
             <ConsistencyHeatmap
               days={heatmap}
               workouts={workouts}
@@ -138,7 +150,8 @@ export default async function DashboardPage() {
               avgGapDays={streaks.avg_gap_days}
             />
 
-            {/* Row 2: Muscle Readiness (2/3) + Balance (1/3) */}
+            {/* Recovery & Readiness */}
+            <SectionLabel>Recovery &amp; Readiness</SectionLabel>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="lg:col-span-2">
                 <MuscleReadinessChart results={readiness} />
@@ -148,7 +161,8 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            {/* Row 3: Weekly Volume (2/3) + Personal Records (1/3) */}
+            {/* Volume & Strength */}
+            <SectionLabel>Volume &amp; Strength</SectionLabel>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="lg:col-span-2">
                 <WeeklyVolume data={weeklyVolume} />
@@ -158,7 +172,8 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            {/* Row 4: 1RM Chart (2/3) + Overload Suggestions (1/3) */}
+            {/* Progression */}
+            <SectionLabel>Progression</SectionLabel>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="lg:col-span-2">
                 <OneRMChart series={oneRMSeries} />
@@ -168,7 +183,8 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            {/* Row 5: Plateaus (1/3) + Session Quality (2/3) */}
+            {/* Analysis */}
+            <SectionLabel>Analysis</SectionLabel>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="lg:col-span-1">
                 <PlateauCards plateaus={plateaus} />
@@ -178,7 +194,8 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            {/* Row 6: Nutrition */}
+            {/* Nutrition */}
+            <SectionLabel>Nutrition</SectionLabel>
             <NutritionDashboardWidget />
           </div>
         )}

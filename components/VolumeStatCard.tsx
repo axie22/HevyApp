@@ -16,10 +16,10 @@ export function VolumeStatCard({ volumeKg }: Props) {
     : Math.round(v).toLocaleString();
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-4">
-      <div className="text-xs text-zinc-500 font-medium uppercase tracking-wide">This month</div>
-      <div className="mt-1 text-2xl font-bold text-zinc-100 tabular-nums">{display}</div>
-      <div className="text-xs text-zinc-400 mt-0.5">{unit} lifted</div>
+    <div className="bg-zinc-900 px-5 py-5">
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600">This month</div>
+      <div className="mt-2.5 text-3xl font-bold tabular-nums text-zinc-100 leading-none tracking-tight">{display}</div>
+      <div className="text-xs text-zinc-500 mt-1.5">{unit} lifted</div>
     </div>
   );
 }
