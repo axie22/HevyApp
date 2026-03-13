@@ -16,6 +16,7 @@ interface Props {
   plateaus: PlateauResult[];
   balance: BalanceResult;
   nutritionSummary?: string;
+  profileSummary?: string | null;
 }
 
 const STARTER_QUESTIONS = [
@@ -32,7 +33,8 @@ function buildSystemPrompt(
   acwr: AcwrResult[],
   plateaus: PlateauResult[],
   balance: BalanceResult,
-  nutritionSummary?: string
+  nutritionSummary?: string,
+  profileSummary?: string | null,
 ): string {
   const acwrWarnings = acwr
     .filter((a) => a.status === 'danger' || a.status === 'undertrained')
@@ -47,6 +49,10 @@ function buildSystemPrompt(
   const nutritionSection = nutritionSummary
     ? `\n\nUSER NUTRITION DATA:\n${nutritionSummary}`
     : '\n\nNUTRITION: No nutrition data logged yet.';
+
+  const profileSection = profileSummary
+    ? `\n\nUSER PROFILE:\n${profileSummary}`
+    : '';
 
   return `You are a knowledgeable strength and conditioning coach with access to the user's complete training history and nutrition log. Your role is to analyze their data and provide specific, actionable coaching advice.
 
@@ -67,10 +73,10 @@ COMPUTED METRICS:
 - ACWR flags: ${acwrWarnings}
 - Plateau flags: ${plateauWarnings}
 - Push/Pull ratio (30d): ${balance.push_pull_ratio.toFixed(2)}
-- Quad/Hip ratio (30d): ${balance.quad_hip_ratio.toFixed(2)}${nutritionSection}`;
+- Quad/Hip ratio (30d): ${balance.quad_hip_ratio.toFixed(2)}${nutritionSection}${profileSection}`;
 }
 
-export function ChatPanel({ summary, acwr, plateaus, balance, nutritionSummary }: Props) {
+export function ChatPanel({ summary, acwr, plateaus, balance, nutritionSummary, profileSummary }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -83,7 +89,7 @@ export function ChatPanel({ summary, acwr, plateaus, balance, nutritionSummary }
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const systemPrompt = buildSystemPrompt(summary, acwr, plateaus, balance, nutritionSummary);
+  const systemPrompt = buildSystemPrompt(summary, acwr, plateaus, balance, nutritionSummary, profileSummary);
 
   async function sendMessage(content: string) {
     if (!content.trim() || isStreaming) return;

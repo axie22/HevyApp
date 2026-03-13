@@ -7,6 +7,7 @@ import { useUnits } from '@/lib/units';
 const LINKS = [
   { href: '/', label: 'Dashboard' },
   { href: '/nutrition', label: 'Nutrition' },
+  { href: '/profile', label: 'Profile' },
 ];
 
 export function Navbar() {

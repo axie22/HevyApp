@@ -15,6 +15,7 @@ import {
 } from '@/lib/analytics';
 import { summarizeWorkouts } from '@/lib/summarize';
 import { readNutritionLogServer, summarizeNutrition } from '@/lib/nutrition-server';
+import { readProfileServer, summarizeProfile } from '@/lib/profile-server';
 import { ConsistencyHeatmap } from '@/components/ConsistencyHeatmap';
 import { MuscleReadinessChart } from '@/components/MuscleReadinessChart';
 import { PlateauCards } from '@/components/PlateauCards';
@@ -49,9 +50,13 @@ export default async function DashboardPage() {
   const overload          = computeOverloadSuggestions(workouts);
   const oneRMSeries       = computeOneRMSeries(workouts);
   const consistency       = computeConsistencyScore(workouts);
-  const nutritionLog      = await readNutritionLogServer();
+  const [nutritionLog, profile] = await Promise.all([
+    readNutritionLogServer(),
+    readProfileServer(),
+  ]);
   const nutritionSummary  = summarizeNutrition(nutritionLog);
-  const summary     = summarizeWorkouts(workouts, acwr, plateaus, balance, nutritionSummary);
+  const profileSummary    = summarizeProfile(profile);
+  const summary     = summarizeWorkouts(workouts, acwr, plateaus, balance, nutritionSummary, profileSummary);
 
   // Stats bar computation — UTC date strings
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -185,6 +190,7 @@ export default async function DashboardPage() {
         plateaus={plateaus}
         balance={balance}
         nutritionSummary={nutritionSummary}
+        profileSummary={profileSummary}
       />
     </main>
   );

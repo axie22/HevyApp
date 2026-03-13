@@ -11,7 +11,8 @@ export function summarizeWorkouts(
   acwr: AcwrResult[],
   plateaus: PlateauResult[],
   balance: BalanceResult,
-  nutritionSummary?: string
+  nutritionSummary?: string,
+  profileSummary?: string | null,
 ): string {
   const now = new Date();
   const ninetyDaysAgo = new Date(now.getTime() - 90 * 86400000);
@@ -115,6 +116,12 @@ export function summarizeWorkouts(
     lines.push('');
     lines.push(`=== NUTRITION (last 14 days) ===`);
     lines.push(nutritionSummary);
+  }
+
+  if (profileSummary) {
+    lines.push('');
+    lines.push(`=== USER PROFILE ===`);
+    lines.push(profileSummary);
   }
 
   return lines.join('\n');
