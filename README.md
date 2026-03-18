@@ -1,119 +1,179 @@
-# Hevy Training Intelligence Dashboard
+# Gauge
 
-A workout analytics dashboard that surfaces deeper training patterns from your [Hevy](https://hevy.com) data. Goes far beyond Hevy's built-in stats to show fatigue trends, plateau detection, strength balance, personal records, weekly volume progression, nutrition tracking, and an AI coach you can actually have a conversation with about your training.
+A personal training intelligence dashboard built on Next.js 16. Gauge connects to your Hevy workout history and WHOOP biometric data, runs a full analytics pipeline, and surfaces actionable insights through six dedicated pages covering training, recovery, nutrition, and AI coaching.
+
+https://github.com/user-attachments/assets/0a2b0d2b-637d-4dea-910e-8a61e21cd40e
 
 ---
 
-## Walkthrough Video
+## Pages
 
-https://github.com/user-attachments/assets/fca23a13-daee-428a-9eab-3bc30f4aec90
-
-A full UI walkthrough covering every feature: stats overview, consistency heatmap, fatigue and recovery, weekly volume, session quality, nutrition, and the AI coach.
+| Route        | Purpose                                                                                                    |
+| ------------ | ---------------------------------------------------------------------------------------------------------- |
+| `/`          | Command center: weekly stats bar, recovery signal, plateau alerts, nutrition strip, 52-week heatmap        |
+| `/training`  | Workout analytics: volume trends, 1RM progression, plateau detection, session quality scoring              |
+| `/recovery`  | Biometrics and readiness: Whoop recovery scores, HRV, sleep breakdown, muscle readiness, push/pull balance |
+| `/nutrition` | Daily nutrition log: calories, macros, 7-day calendar, rolling averages                                    |
+| `/coach`     | Full-page AI coaching powered by a local Ollama model with complete training context                       |
+| `/profile`   | Body metrics, training goal, experience level, notes for the AI coach, and Whoop connection                |
 
 ---
 
 ## Features
 
-### At-a-Glance Stats Bar
+### Dashboard
 
-Four KPI cards at the top of the dashboard give you an instant read on where you stand: sessions this week, total volume this month (in kg), current training streak, and all-time workout count. These update live with your Hevy data and are the first thing you see when the page loads. It is a small thing but it makes the dashboard feel alive.
+- Five-cell stats bar showing sessions this week, monthly volume, current streak, all-time workout count, and 12-week muscle coverage score
+- Recovery signal card with today's Whoop recovery percentage, HRV, and resting heart rate
+- Plateau alert card with active stall count and the top offending exercise
+- Nutrition strip showing 7-day average calories and protein
+- 52-week consistency heatmap with streak and gap statistics
 
-### Consistency Heatmap
+### Training Analytics
 
-A GitHub-style 52-week calendar that shows every training day and colors each cell by volume intensity. The left side shows day labels (Mon, Wed, Fri) so you can spot weekly patterns at a glance. Below the grid you get current streak, longest streak, total sessions, and average days between workouts.
+- Weekly volume bar chart across the last 16 weeks with a dashed average reference line
+- Personal records table showing the best top-set weight per exercise
+- Estimated 1RM progression chart using the Epley formula across your full history
+- Overload suggestions based on recent progression rate per exercise
+- Plateau detection identifying exercises stalled for three or more weeks, classified as low, medium, or high risk
+- Session quality scoring (0 to 10) based on training density, exercise completeness, and recovery timing, displayed with a 7-session rolling average trend line
 
-### Fatigue and Recovery (ACWR)
+### Recovery
 
-Per-muscle Acute:Chronic Workload Ratio computed from your full 28-day history. Each muscle group gets a ratio bar, a status chip (Optimal, Danger, or Undertrained), and the raw acute and chronic load numbers. When all ratios are very high it means you are new to tracking, and the card tells you that directly instead of showing misleading numbers.
+- Whoop recovery card: today's recovery score, resting heart rate, HRV, 7-day trend sparkline, and 7-day HRV average
+- 30-day recovery trend chart
+- Sleep breakdown by stage (deep, REM, light, awake) from the most recent sleep record
+- Whoop activities log showing sport-tagged workout sessions from the wearable
+- Muscle readiness chart: per-muscle-group readiness score from 0 to 100 computed from recency and volume of recent training load
+- Balance analyzer: push/pull ratio and quad/hip ratio over a configurable window with overuse warnings
 
-### Plateau Detector
+### Nutrition
 
-Identifies exercises where you have not made meaningful progress in multiple consecutive weeks despite consistent training. Risk is classified as High (4+ weeks stalled) or Medium (2-3 weeks). The algorithm accounts for deload weeks and uses percentage tolerances on weight and volume to avoid flagging rounding noise.
+- Month-view calendar for selecting any day to log
+- Daily entry form for calories, protein, carbohydrates, fat, fiber, water, and notes
+- Stacked macro proportion bar that updates live as you type
+- 7-day chip grid with per-day calorie and protein totals
+- Rolling weekly averages for all four macros
+- Automatic recovery insight copy assessing protein adequacy and caloric sufficiency
 
-### Strength Balance
+### AI Coach
 
-Push/pull and quad/hip volume ratios across 30, 90, or 365-day windows. Imbalances above or below the warning thresholds are flagged so you can course-correct before they become a problem. Useful for identifying whether your programming has quietly drifted out of proportion.
+- Full-page chat interface at `/coach` with suggested starter questions
+- Streaming responses via Server-Sent Events from a local Ollama model
+- System prompt includes the complete workout history summary, Whoop biometric summary, nutrition log summary, user profile, ACWR flags, plateau flags, and push/pull ratios
+- Whoop-specific questions are surfaced in the suggestions when biometric data is connected
+- Also accessible as a floating panel on the training page via the same underlying chat component
 
-### Weekly Volume Chart
+### Profile
 
-A 16-week bar chart showing total training volume per week. The current week is highlighted in indigo so you can see where you stand relative to your recent trend. A dashed average reference line (excluding the current partial week) makes it easy to see whether volume is building, holding, or declining. This is probably the most useful chart for spotting programming trends.
+- Name, age, sex, height, current weight, and goal weight stored in kg and displayed in the selected unit
+- BMI computed and categorized automatically
+- Training goal selector: strength, hypertrophy, fat loss, endurance, general fitness
+- Experience level selector: beginner, intermediate, advanced
+- Free-text notes field passed directly to the AI coach system prompt
+- Whoop OAuth connect and disconnect controls
 
-### Session Quality Score
+---
 
-Each session is scored 1-10 based on three equally weighted components: training density (volume per minute), completeness (how many sets you hit relative to your average for each exercise), and recovery timing (gap since the last session that worked the same muscle groups). The chart shows a 7-session rolling average line so short-term noise does not obscure the trend.
+## Integrations
 
-### Personal Records
+### Hevy
 
-A full list of your best-ever top-set weight for every exercise, sorted by weight or recency. Records set in the last 30 days are badged as recent PRs. The list is paginated at 5 per page so it does not overwhelm the dashboard on accounts with a large exercise library. Weights are shown to one decimal place.
+Gauge uses the Hevy public REST API to pull your complete workout history and exercise template library. All API calls are made server-side and your key is never sent to the browser. Workout data is cached with a two-hour revalidation window.
 
-### Nutrition Log
+Required environment variable:
 
-A dedicated page at `/nutrition` for tracking daily calories, protein, carbohydrates, fat, fiber, water, and notes. A month-view calendar lets you pick any day. A stacked macro bar updates live as you type so you can see your protein/carb/fat split before you save. All data is written to a local JSON file on the server so it persists across sessions without requiring a database.
+```
+HEVY_API_KEY=your_hevy_api_key
+```
 
-The nutrition widget on the main dashboard shows the last 7 days as day chips with calorie and protein counts, plus four average cards and recovery insight notes based on your weekly average protein and caloric intake.
+To get your Hevy API key: go to [app.hevyapp.com](https://app.hevyapp.com), then Settings, then API.
 
-### AI Coach Chat
+### WHOOP
 
-A chat panel (bottom-right of the dashboard) powered by a local LLM via Ollama. Your full workout history is compressed into a structured context prompt that includes your top 15 exercises, current ACWR flags, active plateaus, balance ratios, and streak stats. The LLM is instructed to cite specific exercises, dates, and weights when answering, which makes the responses actually useful rather than generic.
+Gauge integrates with the Whoop Developer API using the OAuth 2.0 authorization code flow. When connected, it fetches recovery cycles, sleep records, and sport-tagged workout sessions. Hevy and Whoop sessions that overlap in time are deduplicated and merged so each Hevy session is enriched with the corresponding Whoop recovery score, HRV, and sleep data.
+
+The OAuth token is persisted to `data/whoop-tokens.json`. A webhook endpoint at `/api/webhooks/whoop` supports push-based cache revalidation when new recovery data is available from Whoop.
+
+Required environment variables:
+
+```
+WHOOP_CLIENT_ID=your_whoop_client_id
+WHOOP_CLIENT_SECRET=your_whoop_client_secret
+WHOOP_REDIRECT_URI=http://localhost:3000/api/auth/whoop/callback
+```
+
+### Ollama
+
+The AI coaching feature uses a locally running Ollama instance. No data leaves your machine. Gauge sends a structured system prompt containing all computed analytics and streams the model response token by token via SSE.
+
+Required environment variables:
+
+```
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3.2
+```
+
+Set `OLLAMA_MODEL` to any model name returned by `ollama list`. Run `ollama pull <model>` to download a model before using the coach.
 
 ---
 
 ## Setup
 
-### Prerequisites
-
-- Node.js 18+
-- A [Hevy](https://hevy.com) account with workouts logged
-- [Ollama](https://ollama.com) installed locally (for the AI chat feature)
-
-### 1. Install dependencies
+**1. Install dependencies**
 
 ```bash
 npm install
 ```
 
-### 2. Configure environment variables
+**2. Configure environment variables**
 
-The `.env` file at the project root needs two variables:
+Create a `.env` file at the project root:
 
 ```env
-HEVY_API_KEY=your-hevy-api-key-here
-OLLAMA_MODEL=qwen3:8b
+HEVY_API_KEY=
+
+WHOOP_CLIENT_ID=
+WHOOP_CLIENT_SECRET=
+WHOOP_REDIRECT_URI=http://localhost:3000/api/auth/whoop/callback
+
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3.2
 ```
 
-**Getting your Hevy API key:** Go to [app.hevyapp.com](https://app.hevyapp.com), then Settings, then API. Copy the key and paste it into `.env`.
+Only `HEVY_API_KEY` is required. Whoop and Ollama degrade gracefully when not configured: the recovery page shows readiness data without biometrics, and the coach page shows a connection error banner instead of crashing.
 
-**Choosing an Ollama model:** Run `ollama list` to see what you have installed. Set `OLLAMA_MODEL` to match exactly (e.g. `llama3.2`, `qwen3:8b`, `phi3.5`). If you do not have a model yet:
+**3. Pull an Ollama model**
 
 ```bash
 ollama pull llama3.2
+ollama serve
 ```
 
-### 3. Run the dev server
+**4. Start the development server**
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+The app runs at `http://localhost:3000`.
 
-### 4. AI chat setup
+**5. Connect Whoop (optional)**
 
-Ollama must be running before you use the chat panel. If it is not already running as a system service, start it with:
-
-```bash
-ollama serve
-```
-
-Then click the chat button in the bottom-right corner. If you see a "Model Offline" banner, run `ollama list` and confirm your model name matches `OLLAMA_MODEL` in `.env`.
+Navigate to `/profile` and click "Connect Whoop". You will be redirected through the Whoop OAuth consent screen and returned to the profile page. After connecting, biometric data will appear on the recovery page and will be used to enrich training sessions and the AI coach context.
 
 ---
 
-## Data and Caching
+## Scripts
 
-All Hevy API calls are made server-side. Your API key is never sent to the browser. Workout data is cached for 2 hours using Next.js ISR. To force a refresh before the cache expires, restart the dev server.
-
-Nutrition data is stored in `data/nutrition.json` at the project root. This file is created automatically on the first save. It is a plain JSON object keyed by date string (`YYYY-MM-DD`), so it is easy to inspect, edit by hand, or back up.
+| Command                   | Description                                               |
+| ------------------------- | --------------------------------------------------------- |
+| `npm run dev`             | Start the Next.js development server                      |
+| `npm run build`           | Build for production                                      |
+| `npm run start`           | Start the production server                               |
+| `npm run lint`            | Run ESLint                                                |
+| `npm run remotion:studio` | Open the Remotion studio to preview the walkthrough video |
+| `npm run remotion:render` | Render the walkthrough to `out/walkthrough.mp4`           |
 
 ---
 
@@ -121,147 +181,62 @@ Nutrition data is stored in `data/nutrition.json` at the project root. This file
 
 ### Volume
 
-All calculations are based on working set volume only. Warmup sets are excluded. Volume for a set is:
+All calculations use working sets only. Warmup sets are excluded. Volume for a set is `weight_kg x reps`. Bodyweight exercises with no recorded weight contribute 0 kg to volume totals. Muscle group attribution comes from Hevy's exercise template data via `primary_muscle_group` and `secondary_muscle_groups`.
+
+### ACWR (Fatigue and Recovery)
+
+The Acute:Chronic Workload Ratio compares recent training load against a longer-term baseline, per muscle group.
 
 ```
-volume_kg = weight_kg x reps
-```
-
-Bodyweight exercises (no `weight_kg`) contribute 0 kg to volume calculations. Muscle group attribution comes from Hevy's exercise template data (`primary_muscle_group` and `secondary_muscle_groups`).
-
----
-
-### Fatigue and Recovery (ACWR)
-
-The Acute:Chronic Workload Ratio is a sports science model for estimating injury risk and readiness. It compares how hard you have trained recently against your baseline capacity.
-
-**Per muscle group:**
-
-```
-acute_load   = sum of working-set volume for that muscle in the last 7 days
-chronic_load = (sum of volume in the last 28 days / 28) x 7
+acute_load   = volume for that muscle in the last 7 days
+chronic_load = (volume in the last 28 days / 28) x 7
 ACWR         = acute_load / chronic_load
 ```
 
-The chronic load is normalized to a 7-day equivalent so the units match. An ACWR of 1.0 means you are training at exactly your baseline rate.
+| ACWR              | Status            |
+| ----------------- | ----------------- |
+| > 1.5             | Danger            |
+| 0.8 to 1.5        | Optimal           |
+| < 0.8             | Undertrained      |
+| < 2 training days | Insufficient data |
 
-All date boundary comparisons are done using UTC date strings (`YYYY-MM-DD`) anchored to noon UTC to avoid timezone edge cases where workouts near midnight would be counted in the wrong window.
+All date boundaries use UTC date strings anchored to noon UTC to avoid timezone edge cases.
 
-**Status thresholds:**
+### Plateau Detection
 
-| ACWR | Status | Meaning |
-|------|--------|---------|
-| > 1.5 | Danger | Spike in load, elevated injury risk |
-| 0.8 to 1.5 | Optimal | Training at or near your baseline |
-| < 0.8 | Undertrained | Below your usual volume for this muscle |
-| < 2 training days | Insufficient data | Not enough history to compute |
+**Eligibility:** An exercise must appear at least three times in the last six weeks.
 
-Requires at least 2 distinct training days in the 28-day window to produce a result.
+**Aggregation:** Sessions are bucketed by ISO week. Each week stores the maximum top-set weight, maximum total volume, and maximum reps.
 
----
+**Stall detection:** The last four weeks are examined. A stall is declared if, across the most recent three weeks, top-set weight has not increased by more than 2%, weekly volume has not increased by more than 5%, and max reps have not increased.
 
-### Plateau Detector
+**Deload exclusion:** If the most recent week shows both weight and volume more than 15% below the prior four-week peak, the exercise is treated as a deliberate deload and is excluded from plateau flags.
 
-Identifies exercises where you have not made meaningful progress for multiple weeks despite consistent training.
-
-**Step 1 - Eligibility:** An exercise must appear at least 3 times in the last 6 weeks. Less frequent training does not produce enough signal.
-
-**Step 2 - Weekly aggregation:** Sessions are bucketed by ISO week. Each week stores the maximum top-set weight, maximum total volume, and maximum reps seen that week.
-
-**Step 3 - Stall detection:** The last 4 weeks are examined. Progress is considered stalled if, across the most recent 3 of those weeks, all three of the following are true compared to the 4th-to-last week:
-
-- Top-set weight has not increased by more than 2%
-- Weekly volume has not increased by more than 5%
-- Max reps have not increased
-
-The tolerances prevent small rounding-related changes from masking a real stall.
-
-**Step 4 - Deload exclusion:** If the most recent week shows both weight and volume more than 15% below the prior 4-week peak, the exercise is classified as an intentional deload and excluded from plateau flags.
-
-**Step 5 - Stall duration:** The algorithm walks backward through the weekly history counting consecutive weeks with no progress to determine how long the stall has been running.
-
-**Risk levels:**
-
-| Stall duration | Risk |
-|----------------|------|
-| 4+ weeks | High |
-| 2-3 weeks | Medium |
-| < 2 weeks | Not flagged |
-
----
+| Stall duration | Risk        |
+| -------------- | ----------- |
+| 4+ weeks       | High        |
+| 2 to 3 weeks   | Medium      |
+| Under 2 weeks  | Not flagged |
 
 ### Strength Balance
 
-Compares volume distribution across movement pattern categories within a configurable time window (30, 90, or 365 days).
+Push/pull and quad/hip volume ratios are computed over a configurable window (30, 90, or 365 days) using the primary muscle group of each exercise.
 
-**Muscle group classification:**
-
-| Category | Muscles |
-|----------|---------|
-| Push | chest, shoulders, triceps |
-| Pull | back, biceps, rear delts |
-| Quad-dominant | quads |
-| Hip-dominant | hamstrings, glutes |
-
-Classification uses the primary muscle group of each exercise. Total working-set volume is accumulated per category across all sessions in the period.
-
-**Ratios:**
-
-```
-push/pull ratio = push_volume / pull_volume
-quad/hip ratio  = quad_volume / hip_volume
-```
-
-A ratio of 1.0 means perfectly balanced volume between the two categories.
-
-**Warning thresholds:**
-
-| Condition | Warning |
-|-----------|---------|
-| push/pull > 2.0 | Too much push relative to pull |
-| push/pull < 0.5 | Too much pull relative to push |
-| quad/hip > 2.5 | Quad-dominant, insufficient posterior chain work |
-
----
+| Ratio           | Warning threshold            |
+| --------------- | ---------------------------- |
+| Push/pull > 2.0 | Excessive push volume        |
+| Push/pull < 0.5 | Excessive pull volume        |
+| Quad/hip > 2.5  | Insufficient posterior chain |
 
 ### Session Quality Score
 
-Each session receives a score from 1-10 computed as the equal-weighted average of three components.
+Each session is scored from 0 to 10 as the equal-weighted average of three components.
 
-#### Density (0-10)
+**Density (0-10):** Volume per minute normalized against your personal 90th-percentile density across all sessions.
 
-Measures how much volume you moved per unit of time, a proxy for training efficiency.
+**Completeness (0-10):** For each exercise in the session, working sets are compared to your average over the last eight appearances. The mean ratio across all exercises, capped at 1.0, is multiplied by 10.
 
-```
-density = total_volume_kg / duration_minutes
-```
-
-Your density is normalized against your personal 90th-percentile density across all sessions:
-
-```
-density_score = min(10, (density / p90_density) x 10)
-```
-
-A score of 10 means you trained at or above your most efficient sessions.
-
-#### Completeness (0-10)
-
-Measures whether you hit your usual volume for each exercise, based on your last 8 appearances of that exercise.
-
-```
-for each exercise in the session:
-  ratio = working_sets_today / avg_working_sets_last_8_sessions (capped at 1.0)
-
-completeness_score = mean(ratios) x 10
-```
-
-A score of 10 means you matched or exceeded your average set count on every exercise. Defaults to 7 if no prior history exists for any exercise in the session.
-
-#### Timing (0-10)
-
-Rewards adequate recovery time between sessions that train overlapping muscle groups.
-
-The algorithm finds the most recent prior session that hit any of the same muscle groups, then scores based on the gap:
+**Timing (0-10):** Based on the recovery gap since the last session that trained overlapping muscle groups.
 
 ```
 gap >= 48 hours       -> 10
@@ -269,102 +244,102 @@ gap >= 48 hours       -> 10
 gap < 24 hours        -> (gap / 24) x 5
 ```
 
-If no prior session trained overlapping muscles, the gap defaults to 72 hours (score of 10).
-
-**Final score:**
-
-```
-score = (density_score + completeness_score + timing_score) / 3
-```
-
-Rounded to one decimal place. The chart shows a 7-session rolling average so you can track quality trends without individual outlier sessions dominating the visual.
-
----
-
 ### Consistency Heatmap
 
-Each cell in the 52-week calendar grid represents one day. Cell color intensity is determined by where that day's volume falls relative to the maximum single-day volume in your history:
-
-| Volume (% of max) | Intensity level |
-|-------------------|-----------------|
-| 0 (rest day) | Grey |
-| 1-20% | Level 1 |
-| 21-40% | Level 2 |
-| 41-65% | Level 3 |
-| 66-85% | Level 4 |
-| 86-100% | Level 5 |
-
-**Streak calculation:** Current streak walks backward from today, counting consecutive calendar days with at least one workout. Longest streak walks forward through all training dates and counts the longest run of back-to-back days. Average gap is the mean number of days between any two consecutive training days across all history.
-
----
-
-### Weekly Volume Chart
-
-Sessions are bucketed by UTC Monday to define week boundaries. This avoids ambiguity on weeks that span a month boundary. The current week is flagged with `is_current` so the chart can highlight it separately. The average reference line is computed excluding the current week since it is almost always a partial week.
-
----
-
-### Personal Records
-
-For each exercise, the best top-set weight (`top_set_weight_kg`) across all recorded sessions is tracked. An entry is flagged as recent if the date of that best performance is within the last 30 days. The list can be sorted by best weight (descending) or most recently set.
-
----
+Each day is colored by volume relative to the maximum single-day volume in your history, across five intensity levels. Streak calculation walks backward from today counting consecutive calendar days with at least one workout. Average gap is the mean number of days between consecutive training dates across all history.
 
 ### AI Coach Context
 
-When you open the chat panel, your full workout history is compressed into a structured text summary and injected into the Ollama system prompt. The summary includes:
-
-- Aggregate stats for the last 90 days (total workouts, volume, average session)
-- Per-exercise history for the top 15 most-frequent exercises (recent dates, best weight, volume trend)
-- Current ACWR flags (danger/undertrained muscles)
-- Active plateau flags
-- Push/pull and quad/hip ratios
-- Streak and consistency stats
-
-The summary is generated once when the page loads and reused for the entire chat session. The LLM is instructed to reference specific exercises, dates, and weights from the data when answering.
+When the coach loads, your workout history is compressed into a structured text prompt that includes aggregate stats for the last 90 days, per-exercise history for the 15 most frequent exercises, current ACWR flags, active plateau flags, push/pull and quad/hip ratios, and streak statistics. The Whoop summary, nutrition summary, and profile notes are appended when available. The model is instructed to reference specific exercises, dates, and weights when answering.
 
 ---
 
-## Project Structure
+## Architecture
 
 ```
-/app
-  page.tsx                       # Server component, fetches data, runs analytics, renders dashboard
-  loading.tsx                    # Skeleton loading state
-  layout.tsx                     # Root layout with persistent Navbar
-  /nutrition
-    page.tsx                     # Nutrition log page (client component)
-  /api/hevy/workouts/            # Cached Hevy workout endpoint
-  /api/hevy/exercise-templates/  # Cached Hevy templates endpoint
-  /api/chat/                     # Streaming Ollama SSE endpoint
-  /api/nutrition/                # File-backed nutrition CRUD endpoint
+app/
+  page.tsx                      Dashboard command center (server component, force-dynamic)
+  training/page.tsx             Training analytics page (server component)
+  recovery/page.tsx             Recovery and biometrics page (server component)
+  coach/page.tsx                Full-page AI coach (server component)
+  nutrition/page.tsx            Nutrition log (client component)
+  profile/page.tsx              User profile (client component)
+  loading.tsx                   Global skeleton loading state
+  layout.tsx                    Root layout with Navbar and unit provider
 
-/components
-  Navbar.tsx                     # Sticky top navigation with active route detection
-  ConsistencyHeatmap.tsx         # 52-week training calendar with day labels
-  AcwrChart.tsx                  # Per-muscle ACWR bars with status chips
-  PlateauCards.tsx               # Stalled exercise detection cards
-  BalanceAnalyzer.tsx            # Push/pull and quad/hip ratio analyzer
-  SessionQuality.tsx             # Session quality trend chart with rolling average
-  WeeklyVolume.tsx               # 16-week volume bar chart with average reference line
-  PersonalRecords.tsx            # Sortable, paginated PR list
-  NutritionCalendar.tsx          # Month-view calendar for nutrition date selection
-  NutritionDashboardWidget.tsx   # 7-day nutrition summary widget for the dashboard
-  ChatPanel.tsx                  # AI coach chat panel
-  Skeleton.tsx
-  DangerBadge.tsx
+  api/
+    chat/route.ts               Streaming Ollama SSE endpoint
+    hevy/workouts/              Cached Hevy workout proxy
+    hevy/exercise-templates/    Cached Hevy template proxy
+    auth/whoop/                 OAuth 2.0 initiation, callback, status, and disconnect
+    webhooks/whoop/             Push revalidation from Whoop
+    nutrition/route.ts          Nutrition log read and write
+    profile/route.ts            Profile read and write
 
-/lib
-  hevy.ts        # Hevy API client, all types, enrichment pipeline
-  analytics.ts   # Pure analytics functions (ACWR, plateau, balance, quality, heatmap, volume, PRs)
-  summarize.ts   # LLM context compressor
-  nutrition.ts   # Nutrition types and API fetch helpers
+lib/
+  hevy.ts                       Hevy API client, all types, enrichWorkouts, muscle group mapping
+  analytics.ts                  ACWR, plateau detection, balance, session quality, heatmap, streaks, 1RM, overload
+  whoop-server.ts               Whoop API client, token management, caching, deduplication, summarizer
+  summarize.ts                  LLM context builder for workout history
+  nutrition-server.ts           Server-side nutrition log reader and summarizer
+  profile-server.ts             Server-side profile reader and summarizer
+  nutrition.ts                  Client-side nutrition fetch, types, and utilities
+  profile.ts                    Client-side profile fetch and save
+  units.ts                      KG/LB toggle context provider and conversion utilities
 
-/remotion
-  index.ts       # Remotion entry point
-  Root.tsx       # Composition definition (1920x1080, 30fps)
-  Walkthrough.tsx # Full 9-scene UI walkthrough video
+components/
+  Navbar.tsx                    Fixed header with six-page navigation and unit toggle
+  DashSection.tsx               Shared section header with label and horizontal rule
+  ChatPanel.tsx                 Floating FAB and slide-in drawer wrapping ChatInterface
+  ChatInterface.tsx             Stateless chat UI with SSE streaming and Markdown rendering
+  RecoverySignalCard.tsx        Compact Whoop today-score card for the dashboard
+  NutritionStrip.tsx            7-day average calories and protein strip for the dashboard
+  ConsistencyHeatmap.tsx        52-week calendar heatmap with streak statistics
+  WeeklyVolume.tsx              16-week volume bar chart
+  OneRMChart.tsx                Estimated 1RM progression line chart
+  OverloadSuggestions.tsx       Progressive overload recommendations per exercise
+  PlateauCards.tsx              Stalled exercise alert cards
+  SessionQuality.tsx            Per-session quality scatter and rolling average line
+  MuscleReadinessChart.tsx      Per-muscle readiness bar chart
+  BalanceAnalyzer.tsx           Push/pull and quad/hip ratio analysis
+  WhoopRecoveryCard.tsx         Today's recovery score, HRV, RHR, and 7-day trend dots
+  WhoopRecoveryTrend.tsx        30-day recovery trend chart
+  WhoopSleepBreakdown.tsx       Sleep stage breakdown bar from the most recent night
+  WhoopActivitiesLog.tsx        Whoop sport-tagged activity log
+  WhoopConnectButton.tsx        OAuth connect and disconnect control
+  NutritionDashboardWidget.tsx  Full 7-day nutrition widget for the nutrition page
+  PersonalRecords.tsx           Best weight per exercise list
+  VolumeStatCard.tsx            Monthly volume stat cell with unit conversion
 
-/data
-  nutrition.json # File-backed nutrition log (auto-created on first save)
+remotion/
+  index.ts                      Remotion entry point
+  Root.tsx                      Composition definition (1920x1080, 30fps)
+  Walkthrough.tsx               Eight-scene product walkthrough video
 ```
+
+---
+
+## Data Storage
+
+All user data is stored locally. No data is sent to any third-party service outside of the Hevy and Whoop APIs used for retrieval.
+
+| Data               | Location                 |
+| ------------------ | ------------------------ |
+| Whoop OAuth tokens | `data/whoop-tokens.json` |
+| Nutrition log      | `data/nutrition.json`    |
+| User profile       | `data/profile.json`      |
+
+These files are created automatically on first use. They are plain JSON and can be inspected, edited by hand, or backed up without tooling.
+
+---
+
+## Tech Stack
+
+- **Framework:** Next.js 16 with the App Router and React 19
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS v4 with CSS custom properties for design tokens
+- **Charts:** Recharts
+- **AI:** Ollama (local inference, fully offline)
+- **Fonts:** Space Grotesk (display), JetBrains Mono (monospace)
+- **Video:** Remotion 4 for the product walkthrough
+- **Data sources:** Hevy REST API, Whoop Developer API

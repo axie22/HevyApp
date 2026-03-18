@@ -43,7 +43,7 @@ export function Navbar() {
               fontWeight: 600,
             }}
           >
-            TRAINING INTEL
+            GAUGE
           </span>
         </div>
 

@@ -19,8 +19,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Training Intelligence",
-  description: "Workout analytics powered by Hevy — recovery, progression, plateaus, and AI coaching",
+  title: "Gauge",
+  description: "Training analytics powered by Hevy — recovery, progression, plateaus, and AI coaching",
 };
 
 export default function RootLayout({

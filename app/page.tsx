@@ -73,7 +73,7 @@ export default async function DashboardPage() {
               className="font-bold"
               style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--text-1)', letterSpacing: '-0.02em' }}
             >
-              Training Intelligence
+              Gauge
             </h1>
             <p
               className="mt-1"
